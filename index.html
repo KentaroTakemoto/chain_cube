@@ -147,13 +147,14 @@
         }
 
         /* マジカルアイコンの色鮮やかなグラデーション設定 */
+        /* オブジェクトの配色に合わせて赤・青・黄・緑の4色分割に設定 */
         .magical-icon {
             width: 32px;
             height: 32px;
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: conic-gradient(#ff3333 0 25%, #33ccff 25% 50%, #66ff33 50% 75%, #ff33cc 75% 100%);
+            background: conic-gradient(#ff3333 0 25%, #33ccff 25% 50%, #ffcc00 50% 75%, #66ff33 75% 100%);
             border-radius: 4px;
             box-shadow: 0 0 10px rgba(255,255,255,0.8);
         }
@@ -561,6 +562,8 @@ function init() {
     camera.lookAt(0, -1, -2);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
+    // 高解像度ディスプレイ（スマホ等）でのぼやけを解消するため、デバイスのピクセル比を設定
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
@@ -761,17 +764,33 @@ function createMagicalCube() {
 
     const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
     
-    const materials = [
-        new THREE.MeshPhongMaterial({ color: 0xff3333, emissive: 0xaa1111 }), 
-        new THREE.MeshPhongMaterial({ color: 0x33ccff, emissive: 0x1166aa }), 
-        new THREE.MeshPhongMaterial({ color: 0x66ff33, emissive: 0x22aa11 }), 
-        new THREE.MeshPhongMaterial({ color: 0xff33cc, emissive: 0xaa1188 }), 
-        new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0xaa6600 }), 
-        new THREE.MeshPhongMaterial({ color: 0xcc33ff, emissive: 0x6611aa })  
-    ];
-    const mesh = new THREE.Mesh(geometry, materials);
+    // Canvasを用いて1面を4色に塗り分けたテクスチャを生成する
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; 
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    // 左上: 赤
+    ctx.fillStyle = '#ff3333';
+    ctx.fillRect(0, 0, 64, 64);
+    // 右上: 青
+    ctx.fillStyle = '#33ccff';
+    ctx.fillRect(64, 0, 64, 64);
+    // 左下: 緑
+    ctx.fillStyle = '#66ff33';
+    ctx.fillRect(0, 64, 64, 64);
+    // 右下: 黄色
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillRect(64, 64, 64, 64);
+
+    // テクスチャからマテリアルを作成し、キューブ全体に適用
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshPhongMaterial({ map: texture });
+    
+    const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     group.add(mesh);
+    
     return group;
 }
 
