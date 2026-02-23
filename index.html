@@ -1046,6 +1046,14 @@ function processMergeQueue() {
     }
 
     if (reachedMilestone) {
+        // マイルストーン到達時にランダムでお助けアイテムを付与
+        if (Math.random() < 0.5) {
+            magicalCubeCount++;
+        } else {
+            bombCubeCount++;
+        }
+        updateItemUI();
+        
         triggerMilestoneUI(displayMilestoneNum);
     }
 }
