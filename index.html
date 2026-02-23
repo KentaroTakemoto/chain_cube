@@ -487,7 +487,7 @@ function getCubeColor(num) {
 
     const baseColors = [
         0xff0000, 0xfb8c00, 0x8e24aa, 
-        0x03a9f4, 0x7cb342, 0xe91e63  
+        0x03a9f4, 0xe91e63, 0x7cb342 
     ];
 
     const colorIndex = level % 6;
@@ -785,7 +785,16 @@ function createMagicalCube() {
 
     // テクスチャからマテリアルを作成し、キューブ全体に適用
     const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.MeshPhongMaterial({ map: texture });
+    texture.colorSpace = THREE.SRGBColorSpace; // テクスチャのカラースペースをsRGBに設定し、本来の鮮やかな色を表示する
+    
+    // 環境光によるくすみをなくし、テクスチャの色そのものを発光させる設定
+    const material = new THREE.MeshPhongMaterial({ 
+        map: texture,
+        emissive: 0xffffff, // 発光色を白に設定
+        emissiveMap: texture, // 発光マップとして同じテクスチャを使用
+        emissiveIntensity: 0.7, // 発光の強さを調整して鮮やかさを強調する
+        shininess: 100 // 光沢を強める
+    });
     
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
@@ -834,6 +843,9 @@ function shootCube() {
 
     const isOverLine = physicsObjects.some(obj => obj.body.position.z > DEAD_LINE_Z);
     if (isOverLine) return;
+
+    // 射出時に確実に音が鳴るよう、射出直前にAudioContextの状態を確認・更新する
+    initAudio();
 
     isShooting = true;
 
