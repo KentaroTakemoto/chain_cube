@@ -246,16 +246,16 @@
     <div class="milestone-instruction">クリック または 射出キー で再開</div>
 </div>
 
-<div class="instruction">左右キー・A/Dキー・マウス で移動<br>Enter・Space・Zキー・クリック で発射<br>(スマホの場合はドラッグで移動、指を離して発射)<br>(デバッグ用) 上下 / W / S キーで数字変更</div> 
+<div class="instruction">左右キー・A/Dキー・マウス で移動<br>Enter・Space・Zキー・クリック で発射<br>(スマホの場合はドラッグで移動、離して発射)<br>(デバッグ用) 上下 / W / S キーで数字変更</div> 
 <div id="bottom-ui">
     <div id="btn-magical" class="item-btn" onclick="equipMagical()">
         <div class="magical-icon"></div>
-        <div id="count-magical" class="item-count">1</div>
+        <div id="count-magical" class="item-count">2</div>
         <div class="item-key">X</div>
     </div>
     <div id="btn-bomb" class="item-btn" onclick="equipBomb()">
         <div class="bomb-icon"></div>
-        <div id="count-bomb" class="item-count">1</div>
+        <div id="count-bomb" class="item-count">2</div>
         <div class="item-key">C</div>
     </div>
 </div>
@@ -304,9 +304,9 @@ let currentMinSpawn = 2n;
 let nextMilestone = 1000n;      
 let isMilestonePaused = false;  
 
-// アイテム機能の管理用
-let magicalCubeCount = 1;
-let bombCubeCount = 1;
+// アイテム機能の管理用：初期数を1から2へ変更
+let magicalCubeCount = 2;
+let bombCubeCount = 2;
 let currentPlayerCubeType = 'normal';
 
 // パーティクル管理用
@@ -1231,8 +1231,9 @@ window.resetGame = function() {
     isMilestonePaused = false;
     document.getElementById('milestone-overlay').style.display = 'none';
 
-    magicalCubeCount = 1;
-    bombCubeCount = 1;
+    // リセット時にアイテム数を初期値の2に戻す
+    magicalCubeCount = 2;
+    bombCubeCount = 2;
     updateItemUI();
 
     mergeQueue.length = 0;
@@ -1331,8 +1332,9 @@ function loadGameState() {
             currentMinSpawn = BigInt(state.currentMinSpawn || "2");
             nextMilestone = BigInt(state.nextMilestone || "1000");
 
-            magicalCubeCount = state.magicalCubeCount !== undefined ? state.magicalCubeCount : 1;
-            bombCubeCount = state.bombCubeCount !== undefined ? state.bombCubeCount : 1;
+            // 保存データがない場合はデフォルトの初期数(2)を適用
+            magicalCubeCount = state.magicalCubeCount !== undefined ? state.magicalCubeCount : 2;
+            bombCubeCount = state.bombCubeCount !== undefined ? state.bombCubeCount : 2;
             
             updateScoreUI();
 
