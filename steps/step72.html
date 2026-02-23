@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chain Cube</title>
+    <style>
+        /* 基本レイアウトの設定 */
+        body { margin: 0; overflow: hidden; background-color: #abeaff; font-family: 'Arial', sans-serif; }
+        canvas { display: block; }
+
+        /* スコア表示エリアのスタイル */
+        #top-ui {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .score-container {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+            pointer-events: auto;
+        }
+
+        .score-value { font-size: 24px; font-weight: bold; color: #333; }
+        
+        /* リセットボタンのスタイル */
+        .reset-button {
+            margin-top: 8px;
+            padding: 6px 12px;
+            font-size: 14px;
+            font-weight: bold;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #c62828;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .reset-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #c62828;
+        }
+
+        /* 操作説明のスタイル */
+        .instruction {
+            position: absolute;
+            bottom: 80px;
+            width: 100%;
+            text-align: center;
+            color: #555;
+            font-size: 18px;
+            font-weight: bold;
+            pointer-events: none;
+            line-height: 1.5;
+        }
+
+        /* ゲームオーバー画面のスタイル */
+        #game-over-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            text-align: center;
+        }
+
+        .game-over-title { font-size: 48px; font-weight: bold; color: #ff5252; margin-bottom: 10px; }
+        .final-score-label { font-size: 20px; margin-bottom: 5px; }
+        .final-score-value { font-size: 60px; font-weight: bold; margin-bottom: 30px; }
+        .retry-button {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #2e7d32;
+        }
+        .retry-button:active { transform: translateY(4px); box-shadow: 0 2px 0 #2e7d32; }
+
+        /* マイルストーン（祝福）画面のスタイル */
+        #milestone-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: #333;
+            text-align: center;
+            cursor: pointer; /* 全画面クリック可能であることを示す */
+        }
+        .milestone-title { font-size: 48px; font-weight: bold; color: #ff9800; margin-bottom: 20px; }
+        .milestone-message { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .milestone-sub-message { font-size: 20px; color: #e91e63; font-weight: bold; margin-bottom: 40px; }
+        .milestone-instruction { font-size: 16px; color: #777; animation: blink 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* お助けアイテムUIのスタイル */
+        #bottom-ui {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .item-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #fff;
+            border: 4px solid #f1f1f1;
+            position: relative;
+            pointer-events: auto;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .item-btn:active {
+            transform: scale(0.95);
+        }
+        .item-btn.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
+        /* マジカルアイコンの色鮮やかなグラデーション設定 */
+        .magical-icon {
+            width: 32px;
+            height: 32px;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: conic-gradient(#ff3333 0 25%, #33ccff 25% 50%, #66ff33 50% 75%, #ff33cc 75% 100%);
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+
+        /* ボムアイコンを球体と導火線で爆弾らしく表現 */
+        .bomb-icon {
+            width: 32px;
+            height: 32px;
+            position: absolute;
+            top: 55%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle at 30% 30%, #555, #111);
+            border-radius: 50%;
+        }
+        /* 爆弾の口（導火線の付け根） */
+        .bomb-icon::before {
+            content: '';
+            position: absolute;
+            width: 10px; height: 6px;
+            background: #222;
+            top: -4px; left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+        /* 導火線と火花の表現 */
+        .bomb-icon::after {
+            content: '🔥';
+            position: absolute;
+            top: -16px; right: -6px;
+            font-size: 14px;
+            filter: drop-shadow(0 0 2px orange);
+        }
+
+        .item-count {
+            position: absolute;
+            bottom: -6px;
+            left: -6px;
+            background: #ff9800;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .item-key {
+            position: absolute;
+            bottom: -6px;
+            right: -6px;
+            background: #424242;
+            color: white;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="top-ui">
+    <div style="width: 50px;"></div>
+    <div class="score-container">
+        <div class="score-value" id="score">スコア：0</div>
+        <div class="score-value" id="best-score" style="font-size: 16px; color: #777;">ベスト：0</div>
+        <button class="reset-button" onclick="handleReset()">リセット(Rキーでも可)</button>
+    </div>
+    <div style="width: 50px;"></div>
+</div>
+
+<div id="game-over-overlay">
+    <div class="game-over-title">GAME OVER</div>
+    <div class="final-score-label">スコア</div>
+    <div id="final-score" class="final-score-value">0</div>
+    <button class="retry-button" onclick="resetGame()">再挑戦</button>
+</div>
+
+<div id="milestone-overlay" onclick="resumeFromMilestone()">
+    <div class="milestone-title">おめでとう！</div>
+    <div class="milestone-message">初めて <span id="milestone-number">2K</span> のキューブを作りました</div>
+    <div class="milestone-sub-message">射出されるキューブが倍増！<br>お助けアイテム＋１</div>
+    <div class="milestone-instruction">クリック または 射出キー で再開</div>
+</div>
+
+<div class="instruction">左右キー・A/Dキー・マウス で移動<br>Enter・Space・Zキー・クリック で発射<br>(デバッグ用) 上下 / W / S キーで数字変更</div> 
+<div id="bottom-ui">
+    <div id="btn-magical" class="item-btn" onclick="equipMagical()">
+        <div class="magical-icon"></div>
+        <div id="count-magical" class="item-count">1</div>
+        <div class="item-key">X</div>
+    </div>
+    <div id="btn-bomb" class="item-btn" onclick="equipBomb()">
+        <div class="bomb-icon"></div>
+        <div id="count-bomb" class="item-count">1</div>
+        <div class="item-key">C</div>
+    </div>
+</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+
+// --- 定数定義 ---
+const CUBE_SIZE = 1;      
+const LANE_WIDTH = 4.5;   
+const LANE_LENGTH = 10;   
+const WALL_HEIGHT = 1.2;  
+const SIDE_MARGIN = 0.05; 
+const DEAD_LINE_Z = 1.0;  
+
+// --- グローバル変数 ---
+let scene, camera, renderer, playerCube;
+let moveLeft = false, moveRight = false;
+const moveSpeed = 0.1;
+
+// 物理演算・ゲームロジック用
+let world;
+let physicsMaterial;
+let physicsObjects = [];
+let isShooting = false;
+let isGameOver = false; 
+let score = 0n; 
+let highScore = 0n; 
+let needsSave = false; 
+const mergeQueue = [];
+const bombQueue = [];
+
+// インフレ機能の管理用
+let currentMinSpawn = 2n;       
+let nextMilestone = 2000n;      
+let isMilestonePaused = false;  
+
+// アイテム機能の管理用
+let magicalCubeCount = 1;
+let bombCubeCount = 1;
+let currentPlayerCubeType = 'normal';
+
+// マウス・タッチ操作用
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(CUBE_SIZE / 2));
+
+/**
+ * 数値に基づいたキューブの色を計算する
+ */
+function getCubeColor(num) {
+    let level = 0;
+    let current = 2n;
+    
+    while (current < num && level < 1000) {
+        current = getNextNumber(current);
+        level++;
+    }
+
+    const baseColors = [
+        0xff0000, 0xfb8c00, 0x8e24aa, 
+        0x03a9f4, 0x7cb342, 0xe91e63  
+    ];
+
+    const colorIndex = level % 6;
+    const cycle = Math.floor(level / 6);
+    const color = new THREE.Color(baseColors[colorIndex]);
+    
+    const hsl = {};
+    color.getHSL(hsl);
+    hsl.l = Math.max(0.05, hsl.l - (cycle * 0.2));
+    color.setHSL(hsl.h, hsl.s, hsl.l);
+
+    return '#' + color.getHexString();
+}
+
+/**
+ * 数値を単位表記に変換する
+ */
+function formatNumber(num) {
+    const n = BigInt(num);
+    if (n < 1000n) return n.toString();
+    const units = ["K", "M", "G", "T", "P", "E"];
+    let unitIndex = -1;
+    let tempN = n;
+    while (tempN >= 1000n && unitIndex < units.length - 1) {
+        tempN /= 1000n;
+        unitIndex++;
+    }
+    return tempN.toString() + units[unitIndex];
+}
+
+/**
+ * 合体後の次の数値を計算する
+ */
+function getNextNumber(num) {
+    let next = num * 2n;
+    let scale = 1n;
+    for (let i = 0; i < 7; i++) {
+        if (next === 1024n * scale) return 1000n * scale;
+        scale *= 1000n;
+    }
+    return next;
+}
+
+/**
+ * 変更前の数値を計算する（デバッグ用）
+ */
+function getPrevNumber(num) {
+    let scale = 1n;
+    for (let i = 0; i < 7; i++) {
+        if (num === 1000n * scale) return 512n * (scale === 1n ? 1n : scale / 1000n);
+        scale *= 1000n;
+    }
+    return num / 2n;
+}
+
+// ゲーム開始
+init();
+animate();
+
+/**
+ * 全体の初期化処理
+ */
+function init() {
+    initPhysics();
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xabeaff);
+
+    const aspect = window.innerWidth / window.innerHeight;
+    camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 1000);
+    camera.position.set(0, 11, 12);
+    camera.lookAt(0, -1, -2);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(5, 15, 2);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    createStage();
+
+    if (!loadGameState()) {
+        const savedHighScore = localStorage.getItem('chainCubeHighScore');
+        if (savedHighScore) highScore = BigInt(savedHighScore);
+        updateScoreUI();
+    }
+    updateItemUI();
+
+    spawnPlayerCube();
+
+    window.addEventListener('keydown', (e) => handleKey(e, true));
+    window.addEventListener('keyup', (e) => handleKey(e, false));
+    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('beforeunload', saveGameState);
+
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+}
+
+/**
+ * 物理エンジンの初期化
+ */
+function initPhysics() {
+    world = new CANNON.World();
+    world.gravity.set(0, -10, 0); 
+
+    physicsMaterial = new CANNON.Material('standard');
+    const contactMaterial = new CANNON.ContactMaterial(physicsMaterial, physicsMaterial, {
+        friction: 0.005,
+        restitution: 0.1
+    });
+    world.addContactMaterial(contactMaterial);
+}
+
+/**
+ * ステージの生成
+ */
+function createStage() {
+    const stageOffsetZ = -2;
+
+    const floorGeo = new THREE.PlaneGeometry(LANE_WIDTH, LANE_LENGTH);
+    const floorMat = new THREE.MeshPhongMaterial({ color: 0xe8e8e8 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.z = stageOffsetZ;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const floorShape = new CANNON.Plane();
+    const floorBody = new CANNON.Body({ mass: 0, shape: floorShape, material: physicsMaterial });
+    floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    world.addBody(floorBody);
+
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+    for(let i = 0; i < 3; i++) {
+        const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.15), lineMat);
+        dash.rotation.x = -Math.PI / 2;
+        dash.position.set((i - 1) * 1.4, 0.01, DEAD_LINE_Z + (CUBE_SIZE / 2));
+        scene.add(dash);
+    }
+
+    const wallMat = new THREE.MeshPhongMaterial({ color: 0xe6a15c });
+    const barrierHalfHeight = 10;
+
+    const sideWallGeo = new THREE.BoxGeometry(0.2, WALL_HEIGHT, LANE_LENGTH);
+    const leftWall = new THREE.Mesh(sideWallGeo, wallMat);
+    leftWall.position.set(-(LANE_WIDTH / 2 + 0.1), WALL_HEIGHT / 2, stageOffsetZ);
+    scene.add(leftWall);
+    
+    const leftWallShape = new CANNON.Box(new CANNON.Vec3(0.1, barrierHalfHeight, LANE_LENGTH / 2));
+    const leftWallBody = new CANNON.Body({ mass: 0, shape: leftWallShape, material: physicsMaterial });
+    leftWallBody.position.set(leftWall.position.x, barrierHalfHeight, stageOffsetZ);
+    world.addBody(leftWallBody);
+
+    const rightWall = new THREE.Mesh(sideWallGeo, wallMat);
+    rightWall.position.set(LANE_WIDTH / 2 + 0.1, WALL_HEIGHT / 2, stageOffsetZ);
+    scene.add(rightWall);
+
+    const rightWallShape = new CANNON.Box(new CANNON.Vec3(0.1, barrierHalfHeight, LANE_LENGTH / 2));
+    const rightWallBody = new CANNON.Body({ mass: 0, shape: rightWallShape, material: physicsMaterial });
+    rightWallBody.position.set(rightWall.position.x, barrierHalfHeight, stageOffsetZ);
+    world.addBody(rightWallBody);
+
+    const backWallGeo = new THREE.BoxGeometry(LANE_WIDTH + 0.4, WALL_HEIGHT, 0.2);
+    const backWall = new THREE.Mesh(backWallGeo, wallMat);
+    backWall.position.set(0, WALL_HEIGHT / 2, -LANE_LENGTH / 2 + stageOffsetZ);
+    scene.add(backWall);
+
+    const backWallShape = new CANNON.Box(new CANNON.Vec3((LANE_WIDTH + 0.4) / 2, barrierHalfHeight, 0.1));
+    const backWallBody = new CANNON.Body({ mass: 0, shape: backWallShape, material: physicsMaterial });
+    backWallBody.position.set(0, barrierHalfHeight, -LANE_LENGTH / 2 + stageOffsetZ);
+    world.addBody(backWallBody);
+}
+
+/**
+ * 新しいキューブを生成する
+ */
+function spawnPlayerCube() {
+    if (isGameOver) return; 
+
+    const numbers = [];
+    let num = currentMinSpawn;
+    for (let i = 0; i < 5; i++) {
+        numbers.push(num);
+        num = getNextNumber(num);
+    }
+    
+    const spawnNum = numbers[Math.floor(Math.random() * numbers.length)];
+    const color = getCubeColor(spawnNum);
+
+    playerCube = createNumberCube(spawnNum, color);
+    playerCube.position.set(0, CUBE_SIZE / 2, 3.5);
+    scene.add(playerCube);
+
+    currentPlayerCubeType = 'normal';
+    isShooting = false;
+}
+
+/**
+ * 3Dキューブオブジェクトを生成する (通常)
+ */
+function createNumberCube(number, color) {
+    const group = new THREE.Group();
+    group.userData = { number: number, isMagical: false, isBomb: false };
+
+    const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+    const material = new THREE.MeshPhongMaterial({ color: color });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    group.add(mesh);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = 'white';
+    
+    const displayText = formatNumber(number);
+    let fontSize = 75;
+    if (displayText.length >= 4) {
+        fontSize = 50;
+    } else if (displayText.length === 3) {
+        fontSize = 60;
+    } else if (displayText.length === 2) {
+        fontSize = 65;
+    }
+    
+    ctx.font = `Bold ${fontSize}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(displayText, 64, 64);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const textMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const textGeom = new THREE.PlaneGeometry(0.9, 0.9);
+
+    const offsets = [
+        { pos: [0, 0, 0.51], rot: [0, 0, 0] },
+        { pos: [0, 0, -0.51], rot: [0, Math.PI, 0] },
+        { pos: [0, 0.51, 0], rot: [-Math.PI / 2, 0, 0] },
+        { pos: [0, -0.51, 0], rot: [Math.PI / 2, 0, 0] }, 
+        { pos: [0.51, 0, 0], rot: [0, Math.PI / 2, 0] },
+        { pos: [-0.51, 0, 0], rot: [0, -Math.PI / 2, 0] }
+    ];
+
+    offsets.forEach(o => {
+        const p = new THREE.Mesh(textGeom, textMat);
+        p.position.set(...o.pos);
+        p.rotation.set(...o.rot);
+        group.add(p);
+    });
+
+    return group;
+}
+
+/**
+ * マジカルキューブオブジェクトを生成する
+ */
+function createMagicalCube() {
+    const group = new THREE.Group();
+    group.userData = { number: -1, isMagical: true, isBomb: false };
+
+    const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+    
+    /* より鮮やかで発光感のある色設定 (emissiveを追加) */
+    const materials = [
+        new THREE.MeshPhongMaterial({ color: 0xff3333, emissive: 0xaa1111 }), // Vivid Red
+        new THREE.MeshPhongMaterial({ color: 0x33ccff, emissive: 0x1166aa }), // Vivid Blue
+        new THREE.MeshPhongMaterial({ color: 0x66ff33, emissive: 0x22aa11 }), // Vivid Green
+        new THREE.MeshPhongMaterial({ color: 0xff33cc, emissive: 0xaa1188 }), // Vivid Pink
+        new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0xaa6600 }), // Vivid Orange
+        new THREE.MeshPhongMaterial({ color: 0xcc33ff, emissive: 0x6611aa })  // Vivid Purple
+    ];
+    const mesh = new THREE.Mesh(geometry, materials);
+    mesh.castShadow = true;
+    group.add(mesh);
+    return group;
+}
+
+/**
+ * ボムキューブオブジェクトを生成する
+ */
+function createBombCube() {
+    const group = new THREE.Group();
+    group.userData = { number: -1, isMagical: false, isBomb: true };
+
+    const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+    const material = new THREE.MeshPhongMaterial({ color: 0x222222 }); 
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    group.add(mesh);
+    return group;
+}
+
+/**
+ * アイテムのUI状態を更新する
+ */
+function updateItemUI() {
+    document.getElementById('count-magical').innerText = magicalCubeCount;
+    document.getElementById('count-bomb').innerText = bombCubeCount;
+
+    const btnMagical = document.getElementById('btn-magical');
+    const btnBomb = document.getElementById('btn-bomb');
+
+    if (magicalCubeCount <= 0) btnMagical.classList.add('disabled');
+    else btnMagical.classList.remove('disabled');
+
+    if (bombCubeCount <= 0) btnBomb.classList.add('disabled');
+    else btnBomb.classList.remove('disabled');
+}
+
+/**
+ * キューブを発射する処理
+ */
+function shootCube() {
+    if (!playerCube || isShooting || isGameOver || isMilestonePaused) return;
+
+    const isOverLine = physicsObjects.some(obj => obj.body.position.z > DEAD_LINE_Z);
+    if (isOverLine) return;
+
+    isShooting = true;
+
+    // 発射時にアイテムを消費する
+    if (currentPlayerCubeType === 'magical') {
+        magicalCubeCount--;
+    } else if (currentPlayerCubeType === 'bomb') {
+        bombCubeCount--;
+    }
+    updateItemUI();
+
+    const shape = new CANNON.Box(new CANNON.Vec3(CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2));
+    const body = new CANNON.Body({ mass: 1, shape: shape, material: physicsMaterial });
+    
+    body.userData = { 
+        isCube: true, 
+        number: playerCube.userData.number, 
+        isMagical: playerCube.userData.isMagical || false,
+        isBomb: playerCube.userData.isBomb || false,
+        isMerging: false 
+    };
+
+    body.addEventListener('collide', handleCollision);
+    body.linearDamping = 0.4;
+    body.angularDamping = 0.4;
+    body.position.copy(playerCube.position);
+    body.quaternion.copy(playerCube.quaternion);
+    body.velocity.set(0, 0, -25);
+    body.angularVelocity.set(0, 0, 0);
+
+    world.addBody(body);
+    physicsObjects.push({ mesh: playerCube, body: body });
+
+    playerCube = null;
+    needsSave = true; 
+
+    setTimeout(() => {
+        spawnPlayerCube();
+    }, 500);
+}
+
+/**
+ * キューブ同士の衝突判定
+ */
+function handleCollision(e) {
+    const bodyA = e.target;
+    const bodyB = e.body;
+
+    if (bodyA.userData && bodyB.userData && bodyA.userData.isCube && bodyB.userData.isCube) {
+        if (bodyA.userData.isMerging || bodyB.userData.isMerging) return;
+
+        // ボムキューブの衝突
+        if (bodyA.userData.isBomb || bodyB.userData.isBomb) {
+            bodyA.userData.isMerging = true;
+            bodyB.userData.isMerging = true;
+            bombQueue.push({ bodyA, bodyB });
+            return;
+        }
+
+        // マジカルキューブの衝突
+        if (bodyA.userData.isMagical || bodyB.userData.isMagical) {
+            if (bodyA.userData.isMagical && bodyB.userData.isMagical) return;
+            bodyA.userData.isMerging = true;
+            bodyB.userData.isMerging = true;
+            mergeQueue.push({ bodyA, bodyB, isMagicalMerge: true });
+            return;
+        }
+
+        // 通常キューブの衝突
+        if (bodyA.userData.number === bodyB.userData.number) {
+            bodyA.userData.isMerging = true;
+            bodyB.userData.isMerging = true;
+            mergeQueue.push({ bodyA, bodyB, isMagicalMerge: false });
+        }
+    }
+}
+
+/**
+ * 爆発待ちのキューを処理する
+ */
+function processBombQueue() {
+    while (bombQueue.length > 0) {
+        const { bodyA, bodyB } = bombQueue.shift();
+        if (!world.bodies.includes(bodyA) || !world.bodies.includes(bodyB)) continue;
+
+        const bombBody = bodyA.userData.isBomb ? bodyA : bodyB;
+        const explosionPos = new CANNON.Vec3().copy(bombBody.position);
+
+        removeCube(bodyA);
+        removeCube(bodyB);
+        needsSave = true; 
+
+        // 周囲に強い衝撃波を発生させる
+        const shockwaveRadius = 5.0;
+        const shockwaveForce = 12;
+
+        for (const obj of physicsObjects) {
+            const otherBody = obj.body;
+            const dist = explosionPos.distanceTo(otherBody.position);
+            if (dist < shockwaveRadius) {
+                const dir = new CANNON.Vec3();
+                otherBody.position.vsub(explosionPos, dir);
+                const force = shockwaveForce * (1 - dist / shockwaveRadius);
+                dir.normalize();
+                dir.scale(force, dir);
+                dir.y += force * 0.8;
+                otherBody.applyImpulse(dir, new CANNON.Vec3(0, 0, 0));
+            }
+        }
+    }
+}
+
+/**
+ * 合体待ちのキューを処理し、マイルストーンやアイテム獲得のチェックを行う
+ */
+function processMergeQueue() {
+    let reachedMilestone = false;
+    let displayMilestoneNum = 0n;
+
+    while (mergeQueue.length > 0) {
+        const { bodyA, bodyB, isMagicalMerge } = mergeQueue.shift();
+
+        if (!world.bodies.includes(bodyA) || !world.bodies.includes(bodyB)) continue;
+
+        let frontBody, backBody;
+        if (bodyA.position.z > bodyB.position.z) {
+            frontBody = bodyA;
+            backBody = bodyB;
+        } else {
+            frontBody = bodyB;
+            backBody = bodyA;
+        }
+
+        let oldNumber;
+        if (isMagicalMerge) {
+            let magicalBody = bodyA.userData.isMagical ? bodyA : bodyB;
+            let targetBody = bodyA.userData.isMagical ? bodyB : bodyA;
+            oldNumber = targetBody.userData.number;
+            frontBody = magicalBody;
+            backBody = targetBody;
+        } else {
+            oldNumber = backBody.userData.number;
+        }
+
+        const newNumber = getNextNumber(oldNumber);
+        
+        score += newNumber;
+        updateScoreUI();  
+        needsSave = true; 
+
+        removeCube(frontBody);
+        updateCubeToNewNumber(backBody, newNumber);
+        applyMergeEffects(backBody, newNumber);
+
+        // アイテム獲得の判定
+        const itemThreshold = currentMinSpawn * 512n;
+        if (newNumber >= itemThreshold) {
+            if (Math.random() < 0.5) magicalCubeCount++;
+            else bombCubeCount++;
+            updateItemUI();
+        }
+
+        while (newNumber >= nextMilestone) {
+            reachedMilestone = true;
+            displayMilestoneNum = nextMilestone;
+            
+            const oldMin = currentMinSpawn;
+            currentMinSpawn = getNextNumber(currentMinSpawn);
+            nextMilestone = getNextNumber(nextMilestone);
+            
+            for (const obj of physicsObjects) {
+                if (obj.body.userData.number === oldMin && !obj.body.userData.isMagical && !obj.body.userData.isBomb) {
+                    updateCubeToNewNumber(obj.body, currentMinSpawn);
+                }
+            }
+            if (playerCube && playerCube.userData.number === oldMin && currentPlayerCubeType === 'normal') {
+                const currentPosX = playerCube.position.x;
+                scene.remove(playerCube);
+                const color = getCubeColor(currentMinSpawn);
+                playerCube = createNumberCube(currentMinSpawn, color);
+                playerCube.position.set(currentPosX, CUBE_SIZE / 2, 3.5);
+                scene.add(playerCube);
+            }
+        }
+    }
+
+    if (reachedMilestone) {
+        triggerMilestoneUI(displayMilestoneNum);
+    }
+}
+
+/**
+ * 合体時の演出
+ */
+function applyMergeEffects(newBody, newNumber) {
+    const mergePos = newBody.position;
+    newBody.velocity.set(0, 0, 0);
+    newBody.angularVelocity.set(0, 0, 0);
+
+    const MAX_HORIZONTAL_DIST = CUBE_SIZE * 3;
+    const POPUP_IMPULSE_Y = 8.5;
+    const gravity = Math.abs(world.gravity.y);
+    const flightTime = (2 * POPUP_IMPULSE_Y) / gravity;
+
+    let targetBody = null;
+    let minDistance = Infinity;
+    const searchRadius = 6.0;
+
+    for (const obj of physicsObjects) {
+        const otherBody = obj.body;
+        if (otherBody === newBody) continue;
+        if (otherBody.userData && otherBody.userData.isCube && otherBody.userData.number === newNumber) {
+            const dist = mergePos.distanceTo(otherBody.position);
+            if (dist < searchRadius && dist < minDistance) {
+                minDistance = dist;
+                targetBody = otherBody;
+            }
+        }
+    }
+
+    const impulseVec = new CANNON.Vec3(0, POPUP_IMPULSE_Y, 0);
+    if (targetBody) {
+        const dir = new CANNON.Vec3();
+        targetBody.position.vsub(mergePos, dir);
+        dir.y = 0;
+        const actualDist = dir.length();
+        const jumpDist = Math.min(actualDist, MAX_HORIZONTAL_DIST);
+        const horizontalVelocity = jumpDist / flightTime;
+        dir.normalize();
+        impulseVec.x = dir.x * horizontalVelocity;
+        impulseVec.z = dir.z * horizontalVelocity;
+        const dampingComp = 1.25; 
+        impulseVec.x *= dampingComp;
+        impulseVec.z *= dampingComp;
+    }
+
+    newBody.applyImpulse(impulseVec, new CANNON.Vec3(0, 0, 0));
+
+    const shockwaveRadius = 2.5;
+    const shockwaveForce = 4;
+
+    for (const obj of physicsObjects) {
+        const otherBody = obj.body;
+        if (otherBody === newBody) continue;
+        const dist = mergePos.distanceTo(otherBody.position);
+        if (dist < shockwaveRadius) {
+            const dir = new CANNON.Vec3();
+            otherBody.position.vsub(mergePos, dir);
+            const force = shockwaveForce * (1 - dist / shockwaveRadius);
+            dir.normalize();
+            dir.scale(force, dir);
+            dir.y += force * 0.5;
+            otherBody.applyImpulse(dir, new CANNON.Vec3(0, 0, 0));
+        }
+    }
+}
+
+/**
+ * キューブの削除
+ */
+function removeCube(body) {
+    const index = physicsObjects.findIndex(obj => obj.body === body);
+    if (index !== -1) {
+        const obj = physicsObjects[index];
+        scene.remove(obj.mesh);
+        world.removeBody(body);
+        physicsObjects.splice(index, 1);
+    }
+}
+
+/**
+ * キューブの数値を更新
+ */
+function updateCubeToNewNumber(body, newNumber) {
+    const index = physicsObjects.findIndex(obj => obj.body === body);
+    if (index !== -1) {
+        const obj = physicsObjects[index];
+        scene.remove(obj.mesh);
+        const color = getCubeColor(newNumber); 
+        const newMesh = createNumberCube(newNumber, color);
+        newMesh.position.copy(body.position);
+        newMesh.quaternion.copy(body.quaternion);
+        scene.add(newMesh);
+        obj.mesh = newMesh;
+        body.userData.number = newNumber;
+        body.userData.isMerging = false; 
+    }
+}
+
+/**
+ * UIのスコア表示を更新
+ */
+function updateScoreUI() {
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('chainCubeHighScore', highScore.toString());
+    }
+    document.getElementById('score').innerText = 'スコア：' + score;
+    document.getElementById('best-score').innerText = 'ベスト：' + highScore;
+}
+
+/**
+ * マイルストーン(祝福)画面の表示
+ */
+function triggerMilestoneUI(milestoneNum) {
+    isMilestonePaused = true;
+    document.getElementById('milestone-number').innerText = formatNumber(milestoneNum);
+    document.getElementById('milestone-overlay').style.display = 'flex';
+}
+
+/**
+ * マイルストーン画面からの復帰
+ * HTML要素のonclickから呼べるようwindowに紐付け
+ */
+window.resumeFromMilestone = function() {
+    if (!isMilestonePaused) return; // 既に再開している場合は何もしない
+    isMilestonePaused = false;
+    document.getElementById('milestone-overlay').style.display = 'none';
+    needsSave = true; 
+}
+
+/**
+ * ゲームオーバー画面の表示
+ */
+function triggerGameOver() {
+    isGameOver = true;
+    document.getElementById('final-score').innerText = score;
+    document.getElementById('game-over-overlay').style.display = 'flex';
+    if (playerCube) {
+        scene.remove(playerCube);
+        playerCube = null;
+    }
+}
+
+/**
+ * ゲームを初期状態にリセットする
+ */
+window.resetGame = function() {
+    for (let i = physicsObjects.length - 1; i >= 0; i--) {
+        const obj = physicsObjects[i];
+        scene.remove(obj.mesh);
+        world.removeBody(obj.body);
+    }
+    physicsObjects = [];
+
+    if (playerCube) {
+        scene.remove(playerCube);
+        playerCube = null;
+    }
+
+    score = 0n;
+    isGameOver = false;
+    updateScoreUI();
+
+    document.getElementById('game-over-overlay').style.display = 'none';
+
+    currentMinSpawn = 2n;
+    nextMilestone = 2000n;
+    isMilestonePaused = false;
+    document.getElementById('milestone-overlay').style.display = 'none';
+
+    magicalCubeCount = 1;
+    bombCubeCount = 1;
+    /* リセット時にお助けアイテムのUI表示も初期値に更新する */
+    updateItemUI();
+
+    mergeQueue.length = 0;
+    bombQueue.length = 0;
+    isShooting = false;
+    needsSave = false;
+    localStorage.removeItem('chainCubeGameState');
+    spawnPlayerCube();
+}
+
+/**
+ * リセット操作のハンドリング
+ */
+window.handleReset = function() {
+    if (isGameOver || confirm('リセットしますか？')) {
+        resetGame();
+    }
+}
+
+/**
+ * マジカルキューブを装備する
+ */
+window.equipMagical = function() {
+    if (magicalCubeCount <= 0 || isShooting || isGameOver || isMilestonePaused) return;
+    if (currentPlayerCubeType === 'magical') return; 
+    
+    const currentPosX = playerCube ? playerCube.position.x : 0;
+    if (playerCube) scene.remove(playerCube);
+    
+    playerCube = createMagicalCube();
+    playerCube.position.set(currentPosX, CUBE_SIZE / 2, 3.5);
+    scene.add(playerCube);
+    currentPlayerCubeType = 'magical';
+};
+
+/**
+ * ボムキューブを装備する
+ */
+window.equipBomb = function() {
+    if (bombCubeCount <= 0 || isShooting || isGameOver || isMilestonePaused) return;
+    if (currentPlayerCubeType === 'bomb') return;
+    
+    const currentPosX = playerCube ? playerCube.position.x : 0;
+    if (playerCube) scene.remove(playerCube);
+    
+    playerCube = createBombCube();
+    playerCube.position.set(currentPosX, CUBE_SIZE / 2, 3.5);
+    scene.add(playerCube);
+    currentPlayerCubeType = 'bomb';
+};
+
+/**
+ * ゲーム状態を保存
+ */
+function saveGameState() {
+    if (isGameOver) return; 
+
+    const cubesData = physicsObjects.map(obj => ({
+        x: obj.body.position.x, y: obj.body.position.y, z: obj.body.position.z,
+        qx: obj.body.quaternion.x, qy: obj.body.quaternion.y, qz: obj.body.quaternion.z, qw: obj.body.quaternion.w,
+        value: obj.body.userData.number.toString(),
+        isMagical: obj.body.userData.isMagical || false,
+        isBomb: obj.body.userData.isBomb || false,
+        vx: obj.body.velocity.x, vy: obj.body.velocity.y, vz: obj.body.velocity.z,
+        wx: obj.body.angularVelocity.x, wy: obj.body.angularVelocity.y, wz: obj.body.angularVelocity.z
+    }));
+
+    const state = {
+        highScore: highScore.toString(),
+        currentScore: score.toString(),
+        currentMinSpawn: currentMinSpawn.toString(),
+        nextMilestone: nextMilestone.toString(),
+        magicalCubeCount: magicalCubeCount,
+        bombCubeCount: bombCubeCount,
+        cubes: cubesData
+    };
+    localStorage.setItem('chainCubeGameState', JSON.stringify(state));
+}
+
+/**
+ * ゲーム状態を読み込み
+ */
+function loadGameState() {
+    const savedData = localStorage.getItem('chainCubeGameState');
+    if (savedData) {
+        try {
+            const state = JSON.parse(savedData);
+            score = BigInt(state.currentScore || "0");
+            highScore = BigInt(state.highScore || "0");
+            
+            currentMinSpawn = BigInt(state.currentMinSpawn || "2");
+            nextMilestone = BigInt(state.nextMilestone || "2000");
+
+            magicalCubeCount = state.magicalCubeCount !== undefined ? state.magicalCubeCount : 1;
+            bombCubeCount = state.bombCubeCount !== undefined ? state.bombCubeCount : 1;
+            
+            updateScoreUI();
+
+            state.cubes.forEach(cubeData => {
+                const num = BigInt(cubeData.value);
+                let mesh;
+                if (cubeData.isMagical) {
+                    mesh = createMagicalCube();
+                } else if (cubeData.isBomb) {
+                    mesh = createBombCube();
+                } else {
+                    const color = getCubeColor(num);
+                    mesh = createNumberCube(num, color);
+                }
+                
+                mesh.position.set(cubeData.x, cubeData.y, cubeData.z);
+                mesh.quaternion.set(cubeData.qx, cubeData.qy, cubeData.qz, cubeData.qw);
+                scene.add(mesh);
+
+                const shape = new CANNON.Box(new CANNON.Vec3(CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2));
+                const body = new CANNON.Body({ mass: 1, shape: shape, material: physicsMaterial });
+                body.userData = { 
+                    isCube: true, number: num, isMerging: false, 
+                    isMagical: cubeData.isMagical || false, isBomb: cubeData.isBomb || false 
+                };
+                body.addEventListener('collide', handleCollision);
+                body.linearDamping = 0.4;
+                body.angularDamping = 0.4;
+                body.position.set(cubeData.x, cubeData.y, cubeData.z);
+                body.quaternion.set(cubeData.qx, cubeData.qy, cubeData.qz, cubeData.qw);
+                
+                if (cubeData.vx !== undefined) {
+                    body.velocity.set(cubeData.vx, cubeData.vy, cubeData.vz);
+                    body.angularVelocity.set(cubeData.wx, cubeData.wy, cubeData.wz);
+                }
+                world.addBody(body);
+                physicsObjects.push({ mesh: mesh, body: body });
+            });
+            return true;
+        } catch (e) {
+            console.error("Failed to load game state", e);
+            return false;
+        }
+    }
+    return false;
+}
+
+/**
+ * キー入力の制御
+ */
+function handleKey(e, isDown) {
+    if (isGameOver && isDown && e.key.toLowerCase() !== 'r') return;
+
+    const key = e.key.toLowerCase();
+    
+    if (isMilestonePaused) {
+        if (isDown && (e.key === 'Enter' || e.key === ' ' || key === 'z')) {
+            window.resumeFromMilestone();
+        }
+        return; 
+    }
+
+    if (isDown && key === 'r') handleReset();
+    if (isDown && key === 'x') equipMagical();
+    if (isDown && key === 'c') equipBomb();
+
+    if (e.key === 'ArrowLeft' || key === 'a') moveLeft = isDown;
+    if (e.key === 'ArrowRight' || key === 'd') moveRight = isDown;
+    if (isDown && (e.key === 'Enter' || e.key === ' ' || key === 'z')) shootCube();
+
+    if (isDown && playerCube) {
+        if (key === 'w' || e.key === 'ArrowUp' || key === 's' || e.key === 'ArrowDown') {
+            if (currentPlayerCubeType !== 'normal') {
+                // アイテムをキャンセルして通常のキューブに戻す
+                currentPlayerCubeType = 'normal';
+                const currentPosX = playerCube.position.x;
+                scene.remove(playerCube);
+                const color = getCubeColor(currentMinSpawn);
+                playerCube = createNumberCube(currentMinSpawn, color);
+                playerCube.position.set(currentPosX, CUBE_SIZE / 2, 3.5);
+                scene.add(playerCube);
+            } else {
+                const currentNum = playerCube.userData.number;
+                let nextNum = currentNum;
+                if (key === 'w' || e.key === 'ArrowUp') {
+                    const prev = getPrevNumber(currentNum);
+                    nextNum = prev < currentMinSpawn ? currentMinSpawn : prev;
+                }
+                if (key === 's' || e.key === 'ArrowDown') nextNum = getNextNumber(currentNum);
+
+                if (nextNum !== currentNum) {
+                    const currentPosX = playerCube.position.x;
+                    scene.remove(playerCube);
+                    const color = getCubeColor(nextNum);
+                    playerCube = createNumberCube(nextNum, color);
+                    playerCube.position.set(currentPosX, CUBE_SIZE / 2, 3.5);
+                    scene.add(playerCube);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * マウス・タッチ移動時の処理
+ */
+function onPointerMove(event) {
+    if (!playerCube || isGameOver || isShooting || isMilestonePaused) return;
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersectPoint = new THREE.Vector3();
+    raycaster.ray.intersectPlane(dragPlane, intersectPoint);
+
+    if (intersectPoint) {
+        const limit = (LANE_WIDTH / 2) - (CUBE_SIZE / 2) - SIDE_MARGIN;
+        playerCube.position.x = Math.max(-limit, Math.min(limit, intersectPoint.x));
+    }
+}
+
+/**
+ * マウス・タッチでのクリック（タップ）時の処理
+ */
+function onPointerDown(event) {
+    if (event.target.closest('.item-btn') || event.target.closest('.reset-button')) return;
+
+    if (isMilestonePaused) {
+        // マイルストーン画面表示中はオーバーレイ側で処理するためここでは何もしない
+        return;
+    }
+
+    if (!playerCube || isGameOver || isShooting) return;
+
+    onPointerMove(event);
+    shootCube();
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/**
+ * メインループ
+ */
+function animate() {
+    requestAnimationFrame(animate);
+
+    if (!isMilestonePaused) {
+        world.step(1 / 60);
+        processMergeQueue();
+        processBombQueue();
+
+        if (needsSave && !isGameOver) {
+            let allSleeping = true;
+            for (const obj of physicsObjects) {
+                const v = obj.body.velocity.lengthSquared();
+                const w = obj.body.angularVelocity.lengthSquared();
+                if (v > 0.05 || w > 0.05) {
+                    allSleeping = false;
+                    break;
+                }
+            }
+
+            if (allSleeping) {
+                let isOut = false;
+                for (const obj of physicsObjects) {
+                    if (obj.body.position.z > DEAD_LINE_Z) {
+                        isOut = true;
+                        break;
+                    }
+                }
+
+                if (isOut) {
+                    triggerGameOver();
+                } else {
+                    saveGameState();
+                }
+                needsSave = false;
+            }
+        }
+
+        const limit = (LANE_WIDTH / 2) - (CUBE_SIZE / 2) - SIDE_MARGIN;
+        if (playerCube && !isGameOver) {
+            if (moveLeft) playerCube.position.x -= moveSpeed;
+            if (moveRight) playerCube.position.x += moveSpeed;
+            playerCube.position.x = Math.max(-limit, Math.min(limit, playerCube.position.x));
+        }
+    }
+
+    for (const obj of physicsObjects) {
+        obj.mesh.position.copy(obj.body.position);
+        obj.mesh.quaternion.copy(obj.body.quaternion);
+    }
+
+    renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
